@@ -52,7 +52,7 @@ def write_arff_header(fout, feature_count, class_count, comment, relation):
     for index in range(1, feature_count + 1):
         fout.write(feature_string.format(index))
 
-    class_list = [str(x) for x in range(1, class_count + 1)]
+    class_list = [str(0)] + [str(x) for x in range(1, class_count + 1)]
 
     # Wtite class string
     fout.write(class_string.format(", ".join(class_list)))
