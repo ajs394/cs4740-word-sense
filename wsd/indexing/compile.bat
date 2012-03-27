@@ -1,0 +1,1 @@
+javac -cp lib/weka.jar Learn.java
