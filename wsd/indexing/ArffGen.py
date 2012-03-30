@@ -21,20 +21,6 @@ class ArffGen:
             w = line.strip().split()
             self.words[w[0]] = ''
 
-        #for key in self.words.keys():
-        #    fv = FeatVectors.FeatVectors()
-        #    fv.open_file(filename)
-        #    self.words[key] = fv.dis_word(key)
-
-        #for key in self.words.keys():
-        #    for line in self.words[key]:
-        #        cls = 0
-        #        binary = line['sense'].strip().split()
-                
-        #        for i in range(0, len(binary)):
-        #            cls += (2**(i))*int(binary[i])
-        #        line['class'] = str(int(cls))
-
     def gen_index_file(self, word, train):
         if train:
             infile = "train.data"
@@ -44,26 +30,9 @@ class ArffGen:
             ex = '.test'
         
         outfile = '../Data/'+word+'_index'+ex+'.index'
-        fv = FeatVectors.FeatVectors()
+        fv = FeatVectors.FeatVectors('coll_map.pkl')
 
         fv.dis_file(word, infile, outfile)
-        
-        #f = open(filename, 'w')
-
-        #f.write('# Feature Count\n')
-        #f.write(str(len(self.words[word][0]['coll_map'].split()))+'\n')
-
-        #f.write('# Class count\n')
-        #cls_max = 0
-        #for ex in self.words[word]:
-        #    cls_max = max(cls_max, int(ex['class']))
-        #f.write(str(cls_max)+'\n')
-
-        #.write('\n# Data\n')
-        #for ex in self.words[word]:
-        #    f.write(ex['coll_map'].strip()+' '+ex['class'].strip()+'\n')
-
-        #f.close()
 
     def gen_arff_files(self, train):
         if train:

@@ -2,81 +2,95 @@ import WordMap
 import pickle
 import re
 
-
 class FeatVectors:
 
     def __init__(self, inputfile = ""):
-        self.word_map = WordMap.WordMap()
+        self.pklfile = inputfile
+        try:
+            self.word_map = pickle.load(open(inputfile))
+        except:
+            self.word_map = WordMap.WordMap()
 
-        if not inputfile == "":
-            self.FILE = inputfile
-
-    def open_file(self, file_name="../Data/practice.data.txt"):
+    def open_file(self, file_name):
         self.FILE = open(file_name)
 
     def get_file(self):
         return self.FILE
 
-    def write_map(self):
+    def write_map(self, pkl_file=None):
         """
-Writes the current wordmap to a pickle file for future use
-"""
-        pickle.dump(self.word_map, open("../../data/wordmap.pkl", "w"))
+        Writes the current wordmap to a pickle file for future use.
+        Needs to have a pickle file available to it
+        """
+        if pkl_file == None:
+            pkl_file = self.pklfile
+        pickle.dump(self.word_map, open(pkl_file, "w"))
 
     def map_file(self, file_lines):
         """
-Takes a file object and maps out each individual line in
-the file to the map format.
+        Takes a file object and maps out each individual line in
+        the file to the map format.
 
-returns an array of dictionarys containing each line object
+        returns an array of dictionarys containing each line object
 
-param
------
-file_lines: A file object or list of strings with lines of the format
-"word.pos t0 t1 ... tk @ context @ target @ context" to be mapped
-"""
+        param
+        -----
+        file_lines: A file object or list of strings with lines of the format
+            "word.pos t0 t1 ... tk @ context @ target @ context" to be mapped
+        """
         file_map = []
 
         for line in file_lines:
             file_map.append(self.map_line(line))
 
+        ########################################################################################################
+        file_map = self.strip_file_map(file_map)
+
+        ########################################################################################################
+
         return file_map
 
     def map_line(self, line):
         """
-Takes an individual line and parse out the components of the line
-given the format "word.pos t0 t1 ... tk @ context @ target @ context"
+        Takes an individual line and parse out the components of the line
+        given the format "word.pos t0 t1 ... tk @ context @ target @ context"
 
-returns a dictionary containing those individual elements
+        returns a dictionary containing those individual elements
 
-param
------
-line: An individual line containing WSD information
-"""
+        param
+        -----
+        line: An individual line containing WSD information
+        """
         line_map = {}
 
-        line_map['word'] = line[0 : line.find('.')]
-        line_map['pos'] = line[line.find('.') + 1 : line.find(' ')]
-        line_map['sense'] = line[line.find(" ") + 1 : line.find("@")]
-        line_map['context'] = context = line[line.find("@") + 1:]
-        line_map['coll'] = coll = self.find_coll(context)
+        line_map['word']     = line[0 : line.find('.')]
+        line_map['pos']      = line[line.find('.') + 1 : line.find(' ')]
+        line_map['sense']    = line[line.find(" ") + 1 : line.find("@")]
+
+        context = line[line.find("@") + 1:]
+        line_map['context']  = context
+        line_map['context_mapped'] = self.map_coll(context)
+
+        coll = self.find_coll(context)
+        line_map['coll'] =  coll
+
         line_map['coll_map'] = self.map_coll(coll)
 
         return line_map
 
     def find_coll(self, context, dist = 2):
         """
-Finds the collocated words surrounding the @target@ word
-in the context
+        Finds the collocated words surrounding the @target@ word 
+        in the context
 
-returns a string of space separated collocations.
+        returns a string of space separated collocations.
 
-param
------
-context: The context string surrounding the target word
-dist: The number of words leading and trailing to base
-collocations off of
-"""
+        param
+        -----
+        context: The context string surrounding the target word
+        dist: The number of words leading and trailing to base
+            collocations off of
+        """
         if self.coll_dist:
             dist = self.coll_dist
 
@@ -95,7 +109,7 @@ collocations off of
         # size of the word list
         # Should we handle them like this or replacing empty spaces with 0s
         listlen = len(word_list)
-        if i < left:
+        if i < left: 
             right = right + (left - i)
             left = i
         if i + right > listlen:
@@ -114,14 +128,14 @@ collocations off of
 
     def map_coll(self, coll):
         """
-Takes the collocation string and maps the selected term to
-indexed numbers that are unique for each word type
+        Takes the collocation string and maps the selected term to
+        indexed numbers that are unique for each word type
 
-param
------
-coll: The collocations string with words separated
-by spaces
-"""
+        param 
+        -----
+        coll: The collocations string with words separated
+            by spaces
+        """
         words = coll.split()
         nums = []
 
@@ -132,19 +146,19 @@ by spaces
 
     def find_word_lines(self, file_lines, word):
         """
-Finds all the lines in a given file object that start with
-the supplied word returns a list containing those lines
+        Finds all the lines in a given file object that start with 
+        the supplied word returns a list containing those lines
 
-returns a list of strings containing the word sense information
+        returns a list of strings containing the word sense information
 
-param
------
-file_lines: A file or list of strings to fetch the congruent
-word information from
+        param 
+        -----
+        file_lines: A file or list of strings to fetch the congruent 
+            word information from 
 
-word: The word and part of speach to search and build the list
-on. Format as <word>.pos, e.g. begin.v
-"""
+        word: The word and part of speach to search and build the list 
+            on. Format as <word>.pos, e.g. begin.v
+        """
         lines = []
 
         for line in file_lines:
@@ -155,48 +169,53 @@ on. Format as <word>.pos, e.g. begin.v
 
     def dis_word(self, word):
         """
-Looks for a specific word and extracts the lines that are associated
-with that word and performs the mapping for each line that is
-found
+        Looks for a specific word and extracts the lines that are associated
+        with that word and performs the mapping for each line that is 
+        found
 
-Returns an array of dictionaries containing the sense information
-for the given word
+        Returns an array of dictionaries containing the sense information
+        for the given word
 
-param
------
-word: The word and part of speach to search and build the list
-on. Format as <word>.pos, e.g. begin.v
-"""
+        param
+        -----
+        word: The word and part of speach to search and build the list 
+            on. Format as <word>.pos, e.g. begin.v
+        """
         wFile = self.find_word_lines(self.get_file(), word)
         wMap = self.map_file(wFile)
 
         return wMap
 
-    def dis_file(self, word, fileinput, fileoutput, coll_dist = 2):
+    def dis_file(self, word, fileinput, output_dir, coll_dist = 2):
         """
-Creates the feature vectors for a file by mapping the words
-indexes and outputs a file that can be read by datautil.py
-to create an arff file for Machine learning
+        Creates the feature vectors for a file by mapping the words 
+        indexes and outputs a file that can be read by datautil.py
+        to create an arff file for Machine learning
 
-param
------
-word: The string word to build the feature vectors across the
-file
-fileinput: The location of the word sense data with each line
-in the format "word.pos t0 t1 ... tk @ context @ target @ context"
-fileoutput: the location of the file to output to the for
-the input file for Learn.java
-coll_dist: The number of previous and post collocated words
-to get when looking at the context of a word.
-"""
+        param
+        -----
+        word: The string word to build the feature vectors across the
+            file
+        fileinput: The location of the word sense data with each line
+            in the format "word.pos t0 t1 ... tk @ context @ target @ context"
+        output_dir: The desired output directory for the resulting data 
+            files and .arff files
+        coll_dist: The number of previous and post collocated words 
+            to get when looking at the context of a word. 
+        """
         import datautil
 
         self.coll_dist = coll_dist
         
         word_lines = self.find_word_lines(open(fileinput), word)
-        fileoutput = open(fileoutput, 'w')
+
+        output_name = output_dir
+        fileoutput = open(output_name, 'w')
 
         fmap = self.map_file(word_lines)
+
+        # Adding Hee's strip file code
+        #fmap = self.strip_file_map(fmap)
         
         if len(fmap) == 0:
             exit("No lines were found for that word")
@@ -206,36 +225,59 @@ to get when looking at the context of a word.
 
         file_lines = self.format_headers( feature_count, class_count)
         
-        i = 0
+        
         for item in fmap:
             file_lines.append(self.format_line(item))
-            i += 1
 
-        i = 0
         for line in file_lines:
             fileoutput.write(line.lstrip())
-            i += 1
+            
+        fileoutput.close()
 
         
         self.write_map()
 
 
+    def full_sequence(self, inputfile, output_dir, coll_dist=2, train=True):
+        """
+        Create a set of data files and .arff files for a defined
+        data file. The output will be a directory of .arff files. 
+
+        param
+        -----
+        inputfile: The data file that contains the word sense
+            disambiguation data, stored in the format of
+            "word.pos t0 t1 ... tk @ context @ target @ context"
+        output_dir: The desired directory location for the result
+            .arff files
+        coll_dist: The Collocation distance surrounding each word
+
+        TODO: Need to set it up so that we can try different feature
+            generation algorithms
+        """
+        
+
+        for word in words:
+            self.dis_file(word, inputfile, output_dir, coll_dist)
+
+
+            
     def format_headers(self, feature_count, class_count):
         """
-Formats the headers of the list to be written to the output
-file that will be converted to an arff file by the datautil.py
-utility
+        Formats the headers of the list to be written to the output
+        file that will be converted to an arff file by the datautil.py
+        utility
 
-param
------
-file_list: The list of strings to be written to the file - should
-be empty when used here
-feature_count: The number of features being used in the learning
-algorithm. E.G. if we're using the 4 nearest words, then this
-would equal 4
-class_count: the number of possible classes for the word, i.e.
-the number of possible senses for a word.
-"""
+        param
+        -----
+        file_list: The list of strings to be written to the file - should
+            be empty when used here
+        feature_count: The number of features being used in the learning
+            algorithm. E.G. if we're using the 4 nearest words, then this
+            would equal 4
+        class_count: the number of possible classes for the word, i.e. 
+            the number of possible senses for a word. 
+        """
         file_list = []
 
         file_list.append("# Feature Count\n")
@@ -247,23 +289,21 @@ the number of possible senses for a word.
 
     def format_line(self, line_map):
         """
-Takes a mapped line dictionary and formats it into a string
-to be written to an arff file. Writes multiple lines if the
-word contains multiple senses.
+        Takes a mapped line dictionary and formats it into a string
+        to be written to an arff file. Writes multiple lines if the
+        word contains multiple senses. 
 
-param
------
-line_map: A mapped line dictionary object in the format
-created by the function map_line
-"""
+        param
+        -----
+        line_map: A mapped line dictionary object in the format 
+            created by the function map_line
+        """
         line = []
 
         senses = self.map_sense(line_map['sense'])
 
         for sense in senses:
-            # We don't need the word at the beginning of the line
-            # at the moment
-            #line.append(line_map['word'] + "." + line_map['pos'])
+            #line.append(line_map['coll_map_stripped'])
             line.append(line_map['coll_map'])
             line.append(sense)
             line.append("\n")
@@ -272,15 +312,15 @@ created by the function map_line
 
     def map_sense(self, sense):
         """
-Takes a sense string and returns a list of the senses that are
-contained within it, so with an input of "0 1 0 0 0" it will
-return a list equal to ["2"], and for "0 1 0 1 0" it will
-return ["2","4"]
+        Takes a sense string and returns a list of the senses that are
+        contained within it, so with an input of "0 1 0 0 0" it will 
+        return a list equal to ["2"], and for "0 1 0 1 0" it will 
+        return ["2","4"]
 
-param
------
-sense: the string of senses that apply to this word in binary format
-"""
+        param
+        -----
+        sense: the string of senses that apply to this word in binary format
+        """
         sense_list = sense.strip().split(" ")
         senses = []
         for i in range(len(sense_list)):
@@ -288,41 +328,76 @@ sense: the string of senses that apply to this word in binary format
                 senses.append(str(i + 1))
 
         if len(senses) == 0:
-            senses.append("0")
+            senses.append("?")
 
         return senses
 
+
+    def fetch_dictionary(self, filepath, train):
+        """
+        Fetches the list of words used in a file and returns them
+        as a list. The file must be of the format given in map_file
+
+        Returns the list of words
+
+        param
+        -----
+        filepath: The location of the file to retrieve the words from
+
+        """
+        if not train:
+            
+        words = {}
+        #dictionary = minidom.parse(filepath)
+        for line in open(filepath):
+            word = line[0:line.find(" ")].lower()
+            if word in words:
+                continue
+            else:
+                words[word] = True
+
+        return words.keys()
+
     def create_stop_words(self, file_map):
         """
-Takes a file map list object and creates stop words from the word
-frequency. Stop words are those whose term frequency is greater than
-0.4% (1/230) of the entire document. The constant 230 was chosen
-by manually trying out on the given training data set for the project.
+        Takes a file map list object and creates stop words according to
+        Zipf's law: F(rank) ~ 0.1 / rank. Given a threshold F(rank), any word
+        satisfying F(rank_word) >= F(rank) will be considered as a stop word.
+        
+        For the frequency, the program uses IDF because it is proved to
+        outperform when other frequencies such as TF are used. The threshold
+        frequency F(rank) is defined as log(2/3) from our experiments on the
+        given training data. Since F(r) = log(num_of_documents_the_word_appears 
+        / total_num_of_documents), for simplicity, we compare the following:
+        num_of_documents_the_word_appears >= threshold = tot_num_of_doc*2/3
 
-returns a hashtable whose keys are stop words
+        returns a hashtable whose keys are stop words
 
-param
-_____
-file_map: A list object created from self.map_file(...) which consists
-of line map dictionary objects. Each line map dictionary object
-should containt at least the key 'context' whose value is a string
-"""
+        param
+        _____
+        file_map: A list object created from self.map_file(...) which consists
+            of line map dictionary objects. Each line map dictionary object
+            should containt at least the key 'context' whose value is a string
+        """
         word_counts = {}
-        doc_size = 0
+        doc_count = 0.0
 
         for line_map in file_map:
+            doc_count = doc_count + 1.0
             context = line_map['context']
             word_list = context.strip().lower().split(' ')
+            vocab = {}
             for word in word_list:
-                if word_counts.has_key(word):
-                    word_counts[word] = word_counts[word] + 1
-                else:
-                    word_counts[word] = 1
-            doc_size = doc_size + 1
+                if not vocab.has_key(word):
+                    if word_counts.has_key(word):
+                        word_counts[word] = word_counts[word] + 1.0
+                    else:
+                        word_counts[word] = 1.0
+                vocab[word] = 1
 
         stop_words = {}
         words = word_counts.keys()
-        sigma = doc_size / 230
+        sigma = doc_count * 2.0 / 3.0
 
         for word in words:
             if word_counts[word] >= sigma:
@@ -332,19 +407,19 @@ should containt at least the key 'context' whose value is a string
 
     def strip_file_map(self, file_map):
         """
-Takes a file map list object and eliminate stop words and any token that
-contains a non-alpha-numeric character such as (, ), ', etc except @.
-In our training data, the character @ is used to indicate the important
-words to be disambiguated thus critical to be kept in our file map object.
+        Takes a file map list object and eliminate stop words and any token that
+        contains a non-alpha-numeric character such as (, ), ', etc except @.
+        In our training data, the character @ is used to indicate the important
+        words to be disambiguated thus critical to be kept in our file map object.
 
-returns a file map object stripped of trivial tokens and words
+        returns a file map object stripped of trivial tokens and words
 
-param
------
-file_map: A list object created from self.map_file(...) which consists
-of line map dictionary objects. Each line map dictionary object
-should containt at least the key 'context' whose value is a string
-"""
+        param
+        -----
+        file_map: A list object created from self.map_file(...) which consists
+            of line map dictionary objects. Each line map dictionary object
+            should containt at least the key 'context' whose value is a string
+        """
         stop_words = self.create_stop_words(file_map)
 
         file_map_stripped = []
@@ -357,34 +432,36 @@ should containt at least the key 'context' whose value is a string
 
     def strip_line_map(self, line_map, stop_words):
         """
-Takes a line map object and a stop words object to strip the line map object
-of the stop words and any non-alpha-numeric tokens besides the tokens that
-contains '@', a special indicator for an important word.
+        Takes a line map object and a stop words object to strip the line map object
+        of the stop words and any non-alpha-numeric tokens besides the tokens that
+        contains '@', a special indicator for an important word.
 
-returns a line map stripped of trivial tokens and words
+        returns a line map stripped of trivial tokens and words
 
-param
------
-line_map: A dictionary containing WSD information such as word, pos, sense,
-context, coll, and coll_map
-stop_words: A dictionary containing stop words
-"""
+        param
+        -----
+        line_map: A dictionary containing WSD information such as word, pos, sense,
+            context, coll, and coll_map
+        stop_words: A dictionary containing stop words
+        """
         context = line_map['context']
-        line_map['context_stripped'] = context_stripped = self.strip_context(context, stop_words)
+
+        context_stripped = self.strip_context(context, stop_words)
+        line_map['context_stripped'] = context_stripped
         line_map['coll_map_stripped'] = self.map_coll(self.find_coll(context_stripped))
 
         return line_map
 
     def strip_context(self, context, stop_words):
         """
-Takes a context string and remove stop words and trivial non-alpha-numeric
-tokens from it.
+        Takes a context string and remove stop words and trivial non-alpha-numeric
+        tokens from it.
 
-returns a modified context string stripped of trivial tokens
------
-context: A string
-stop_words: A dictionary containing stop words
-"""
+        returns a modified context string stripped of trivial tokens
+        -----
+        context: A string
+        stop_words: A dictionary containing stop words
+        """
         stripped_word_list = []
         word_list = context.strip().split(' ')
 
@@ -394,13 +471,3 @@ stop_words: A dictionary containing stop words
                     stripped_word_list.append(word)
 
         return ' '.join(stripped_word_list)
-
-    def gen_class(self, sense):
-        return 
-
-    def gen_sense(self, cls, num_senses):
-        ret = []
-        for i in range(0, num_senses):
-            ret += ["1"] if cls == (i + 1) else ["0"]
-        return " ".join(ret)
-        
